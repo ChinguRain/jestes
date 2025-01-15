@@ -1,0 +1,356 @@
+///
+import { shallowMount } from '@vue/test-utils';
+import MyComponent from './MyComponent.vue'; // Adjust the import according to your file structure
+import FetchAPI from './FetchAPI'; // Adjust the import according to your file structure
+
+jest.mock('./FetchAPI'); // Mock the FetchAPI module
+
+describe('MyComponent', () => {
+  let wrapper;
+
+  beforeEach(() => {
+    wrapper = shallowMount(MyComponent);
+    wrapper.vm.createCanvas = jest.fn(); // Mock createCanvas method
+    global.URL.createObjectURL = jest.fn(); // Mock URL.createObjectURL
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks(); // Clear mocks after each test
+  });
+
+  it('should fetch image and create canvas', async () => {
+    const mockResponse = new Blob(); // Create a mock Blob response
+    FetchAPI.mockImplementation(() => {
+      return {
+        get: jest.fn().mockResolvedValue(mockResponse), // Mock the get method to resolve with the mock response
+      };
+    });
+
+    await wrapper.vm.fetchImage(); // Call the fetchImage method
+
+    expect(FetchAPI).toHaveBeenCalled(); // Check if FetchAPI was instantiated
+    expect(FetchAPI().get).toHaveBeenCalledWith('/assets/images/line_chart.png', {
+      responseType: 'blob',
+    }); // Check if the get method was called with the correct arguments
+    expect(URL.createObjectURL).toHaveBeenCalledWith(mockResponse); // Check if createObjectURL was called with the mock response
+    expect(wrapper.vm.createCanvas).toHaveBeenCalled(); // Check if createCanvas was called
+  });
+
+  it('should handle errors', async () => {
+    const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(); // Spy on console.log
+
+    FetchAPI.mockImplementation(() => {
+      return {
+        get: jest.fn().mockRejectedValue(new Error('Fetch error')), // Mock the get method to reject with an error
+      };
+    });
+
+    await wrapper.vm.fetchImage(); // Call the fetchImage method
+
+    expect(consoleLogSpy).toHaveBeenCalledWith(expect.any(Error)); // Check if console.log was called with an error
+    consoleLogSpy.mockRestore(); // Restore the original console.log
+  });
+});
+
+
+///
+import { shallowMount } from '@vue/test-utils';
+import MyComponent from './MyComponent.vue'; // Adjust the import according to your file structure
+import FetchAPI from './FetchAPI'; // Adjust the import according to your file structure
+
+jest.mock('./FetchAPI'); // Mock the FetchAPI module
+
+describe('MyComponent', () => {
+  it('should fetch image and create canvas', async () => {
+    const wrapper = shallowMount(MyComponent);
+    wrapper.vm.createCanvas = jest.fn(); // Mock createCanvas method
+    global.URL.createObjectURL = jest.fn(); // Mock URL.createObjectURL
+
+    const mockResponse = new Blob(); // Create a mock Blob response
+    FetchAPI.mockImplementation(() => {
+      return {
+        get: jest.fn().mockResolvedValue(mockResponse), // Mock the get method to resolve with the mock response
+      };
+    });
+
+    await wrapper.vm.fetchImage(); // Call the fetchImage method
+
+    expect(FetchAPI).toHaveBeenCalled(); // Check if FetchAPI was instantiated
+    expect(FetchAPI().get).toHaveBeenCalledWith('/assets/images/line_chart.png', {
+      responseType: 'blob',
+    }); // Check if the get method was called with the correct arguments
+    expect(URL.createObjectURL).toHaveBeenCalledWith(mockResponse); // Check if createObjectURL was called with the mock response
+    expect(wrapper.vm.createCanvas).toHaveBeenCalled(); // Check if createCanvas was called
+  });
+
+  it('should handle errors', async () => {
+    const wrapper = shallowMount(MyComponent);
+    const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(); // Spy on console.log
+    wrapper.vm.createCanvas = jest.fn(); // Mock createCanvas method
+    global.URL.createObjectURL = jest.fn(); // Mock URL.createObjectURL
+
+    FetchAPI.mockImplementation(() => {
+      return {
+        get: jest.fn().mockRejectedValue(new Error('Fetch error')), // Mock the get method to reject with an error
+      };
+    });
+
+    await wrapper.vm.fetchImage(); // Call the fetchImage method
+
+    expect(consoleLogSpy).toHaveBeenCalledWith(expect.any(Error)); // Check if console.log was called with an error
+    consoleLogSpy.mockRestore(); // Restore the original console.log
+  });
+});
+
+
+///IMPROVEMENTS
+#1 Ensure that createCanvas is called after the image is fetched.
+Verify that the imageUrl is set correctly after the image is fetched.
+
+test('fetchImage should set imageUrl and call createCanvas', async () => {
+  const mockBlob = new Blob(['image content'], { type: 'image/png' });
+  FetchAPI.mockImplementation(() => ({
+    get: jest.fn().mockResolvedValue(mockBlob),
+  }));
+
+  await wrapper.vm.fetchImage();
+
+  expect(wrapper.vm.imageUrl).toBe(mockBlobUrl);
+  expect(wrapper.vm.createCanvas).toHaveBeenCalledWith(mockBlobUrl);
+});
+
+#2Ensure that the canvas context methods (drawImage, fillRect, strokeRect, etc.) are called with the correct parameters after the image loads.
+it('should draw the image and rectangles on the canvas', async () => {
+  const response = new Blob(['image data'], { type: 'image/png' });
+  const imageURL = URL.createObjectURL(response);
+  const mockImage = new Image();
+  mockImage.onload = jest.fn();
+  jest.spyOn(window, 'Image').mockImplementation(() => mockImage);
+
+  await wrapper.vm.createCanvas(imageURL);
+  mockImage.onload(); // Simulate image load
+
+  expect(wrapper.vm.ctx.drawImage).toHaveBeenCalledWith(mockImage, 0, 0, wrapper.vm.$refs.myCanvas.width, wrapper.vm.$refs.myCanvas.height);
+  expect(wrapper.vm.ctx.fillRect).toHaveBeenCalled(); // Check if fillRect was called
+  expect(wrapper.vm.ctx.strokeRect).toHaveBeenCalled(); // Check if strokeRect was called
+});
+
+#3 You might want to add tests to ensure that the background color is set correctly based on the operation status.
+
+it('should return correct background color based on operation status', () => {
+  wrapper.setData({ operation: 1 });
+  expect(wrapper.vm.determineBackgroundColor()).toEqual({
+    backgroundColor: 'green',
+    color: 'white',
+  });
+
+  wrapper.setData({ operation: 2 });
+  expect(wrapper.vm.determineBackgroundColor()).toEqual({
+    backgroundColor: '#FFCA37',
+    color: 'black',
+  });
+
+  wrapper.setData({ operation: 3 });
+  expect(wrapper.vm.determineBackgroundColor()).toEqual({
+    backgroundColor: 'red',
+    color: 'white',
+  });
+
+  wrapper.setData({ operation: 999 });
+  expect(wrapper.vm.determineBackgroundColor()).toEqual({
+    backgroundColor: 'gray',
+    color: 'white',
+  });
+});
+
+
+///
+test('fetchImage should set imageUrl and call createCanvas with the correct URL', async () => {
+  // Mock the response from the FetchAPI
+  const mockBlob = new Blob(['image content'], { type: 'image/png' });
+  const mockApi = new FetchAPI();
+  mockApi.get.mockResolvedValue(mockBlob); // Mock the get method to resolve with the mock Blob
+
+  // Set up the mock for URL.createObjectURL
+  const mockBlobUrl = 'blob:http://example.com/fake-blob-url';
+  global.URL.createObjectURL = jest.fn().mockReturnValue(mockBlobUrl);
+
+  // Call the fetchImage method
+  await wrapper.vm.fetchImage();
+
+  // Assertions
+  expect(global.URL.createObjectURL).toHaveBeenCalledWith(mockBlob); // Check if createObjectURL was called with the Blob
+  expect(wrapper.vm.imageUrl).toBe(mockBlobUrl); // Check if imageUrl was set correctly
+  expect(wrapper.vm.createCanvas).toHaveBeenCalledWith(mockBlobUrl); // Check if createCanvas was called with the correct URL
+});
+
+///
+afterEach(() => {
+  jest.restoreAllMocks();
+  delete global.URL.createObjectURL; // Clean up the mock
+});
+
+
+
+
+
+////OPERATIONNNNNNN
+
+///
+// MyComponent.spec.js
+import { shallowMount } from '@vue/test-utils';
+import MyComponent from './MyComponent.vue';
+import FetchAPI from './FetchAPI';
+
+jest.mock('./FetchAPI'); // Mock the FetchAPI module
+
+describe('MyComponent', () => {
+  let wrapper;
+
+  beforeEach(() => {
+    wrapper = shallowMount(MyComponent);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks(); // Clear mocks after each test
+  });
+
+  it('fetches abnormalities successfully', async () => {
+    // Arrange: Set up the mock implementation
+    const mockData = { data: ['abnormality1', 'abnormality2'] };
+    FetchAPI.mockImplementation(() => {
+      return {
+        get: jest.fn().mockResolvedValue(mockData),
+      };
+    });
+
+    // Act: Call the method
+    const result = await wrapper.vm.fetchAbnormalities();
+
+    // Assert: Check the result
+    expect(result).toEqual(['abnormality1', 'abnormality2']);
+    expect(FetchAPI).toHaveBeenCalledTimes(1);
+  });
+
+  it('handles errors gracefully', async () => {
+    // Arrange: Set up the mock implementation to throw an error
+    FetchAPI.mockImplementation(() => {
+      return {
+        get: jest.fn().mockRejectedValue(new Error('API error')),
+      };
+    });
+
+    // Act: Call the method
+    const result = await wrapper.vm.fetchAbnormalities();
+
+    // Assert: Check the result
+    expect(result).toBeUndefined(); // Since the error is caught, it should return undefined
+    expect(FetchAPI).toHaveBeenCalledTimes(1);
+  });
+});
+
+///
+// MyComponent.spec.js
+import { shallowMount } from '@vue/test-utils';
+import MyComponent from './MyComponent.vue';
+import FetchAPI from './FetchAPI';
+
+jest.mock('./FetchAPI'); // Mock the FetchAPI module
+
+describe('MyComponent', () => {
+  afterEach(() => {
+    jest.clearAllMocks(); // Clear mocks after each test
+  });
+
+  it('fetches abnormalities successfully', async () => {
+    // Arrange: Set up the mock implementation
+    const mockData = { data: ['abnormality1', 'abnormality2'] };
+    FetchAPI.mockImplementation(() => {
+      return {
+        get: jest.fn().mockResolvedValue(mockData),
+      };
+    });
+
+    // Act: Mount the component
+    const wrapper = shallowMount(MyComponent);
+
+    // Call the method
+    const result = await wrapper.vm.fetchAbnormalities();
+
+    // Assert: Check the result
+    expect(result).toEqual(['abnormality1', 'abnormality2']);
+    expect(FetchAPI).toHaveBeenCalledTimes(1);
+  });
+
+  it('handles errors gracefully', async () => {
+    // Arrange: Set up the mock implementation to throw an error
+    FetchAPI.mockImplementation(() => {
+      return {
+        get: jest.fn().mockRejectedValue(new Error('API error')),
+      };
+    });
+
+    // Act: Mount the component
+    const wrapper = shallowMount(MyComponent);
+
+    // Call the method
+    const result = await wrapper.vm.fetchAbnormalities();
+
+    // Assert: Check the result
+    expect(result).toBeUndefined(); // Since the error is caught, it should return undefined
+    expect(FetchAPI).toHaveBeenCalledTimes(1);
+  });
+});
+
+///
+// MyComponent.spec.js
+import { shallowMount } from '@vue/test-utils';
+import MyComponent from './MyComponent.vue';
+import FetchAPI from './FetchAPI';
+
+jest.mock('./FetchAPI'); // Mock the FetchAPI module
+
+describe('MyComponent', () => {
+  afterEach(() => {
+    jest.clearAllMocks(); // Clear mocks after each test
+  });
+
+  it('fetches abnormalities successfully', async () => {
+    // Arrange: Set up the mock implementation
+    const mockData = { data: ['abnormality1', 'abnormality2'] };
+    FetchAPI.mockImplementation(() => {
+      return {
+        get: jest.fn().mockResolvedValue(mockData),
+      };
+    });
+
+    // Act: Mount the component
+    const wrapper = shallowMount(MyComponent);
+
+    // Call the method
+    const result = await wrapper.vm.fetchAbnormalities();
+
+    // Assert: Check the result
+    expect(result).toEqual(['abnormality1', 'abnormality2']); // This covers the return statement
+    expect(FetchAPI).toHaveBeenCalledTimes(1);
+  });
+
+  it('handles errors gracefully', async () => {
+    // Arrange: Set up the mock implementation to throw an error
+    FetchAPI.mockImplementation(() => {
+      return {
+        get: jest.fn().mockRejectedValue(new Error('API error')),
+      };
+    });
+
+    // Act: Mount the component
+    const wrapper = shallowMount(MyComponent);
+
+    // Call the method
+    const result = await wrapper.vm.fetchAbnormalities();
+
+    // Assert: Check the result
+    expect(result).toBeUndefined(); // Since the error is caught, it should return undefined
+    expect(FetchAPI).toHaveBeenCalledTimes(1);
+  });
+});
