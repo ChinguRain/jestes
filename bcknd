@@ -1,0 +1,229 @@
+///
+import random
+from flask import Blueprint, request, jsonify
+from src.setup_db_example.models.m_replenishment_notice import ReplenishmentDb
+from src.setup_db_example.schemas.s_replenishment_notice import ReplenishmentSchema
+from src import db  # Assuming you have a db object for database operations
+
+replenishment_notice_router = Blueprint("a_replenishment_notice", __name__)
+replenishment_notice_schema = ReplenishmentSchema
+
+@replenishment_notice_router.route("/api/insert-random-replenishment", methods=["POST"])
+def insert_random_replenishment():
+    """Insert random replenishment notice into the database
+
+    Returns:
+        dict: return the api response
+    """
+    try:
+        # Generate random float values
+        random_float_value_1 = random.uniform(1.0, 100.0)  # Example range
+        random_float_value_2 = random.uniform(1.0, 100.0)  # Example range
+
+        # Create a new instance of ReplenishmentDb
+        new_replenishment = ReplenishmentDb(
+            # Assuming you have fields like 'value1' and 'value2' in your model
+            value1=random_float_value_1,
+            value2=random_float_value_2,
+            # Add other required fields here
+            setup_date_time=datetime.utcnow()  # Example field
+        )
+
+        # Add the new instance to the session and commit
+        db.session.add(new_replenishment)
+        db.session.commit()
+
+        return {
+            "success": True,
+            "message_response": "REPLENISHMENT NOTICE INSERTED SUCCESSFULLY",
+            "message_content": "Random replenishment notice inserted successfully",
+            "data": replenishment_notice_schema.dump(new_replenishment),
+        }, 201
+
+    except Exception as e:
+        db.session.rollback()  # Rollback in case of error
+        return {
+            "success": False,
+            "message_response": "ERROR INSERTING REPLENISHMENT NOTICE",
+            "message_content": str(e),
+        }, 500
+
+
+///
+from flask import Flask
+from apscheduler.schedulers.background import BackgroundScheduler
+import requests
+
+app = Flask(__name__)
+
+def insert_random_replenishment():
+    """Function to call the API endpoint to insert random replenishment."""
+    try:
+        response = requests.post("http://localhost:5000/api/insert-random-replenishment")
+        print(response.json())  # Log the response for debugging
+    except Exception as e:
+        print(f"Error calling API: {e}")
+
+# Set up the scheduler
+scheduler = BackgroundScheduler()
+scheduler.add_job(insert_random_replenishment, 'interval', seconds=60)  # Call every 60 seconds
+scheduler.start()
+
+@app.route('/')
+def home():
+    return "API is running!"
+
+if __name__ == "__main__":
+    app.run(debug=True)
+
+///
+APScheduler: This library allows you to schedule jobs in a Flask application.
+insert_random_replenishment: This function makes a POST request to the API endpoint to insert random values.
+Job Scheduling: The job is set to run every 60 seconds, but you can adjust the interval as needed.
+Background Scheduler: The scheduler runs in the background, allowing your Flask app to handle other requests simultaneously.
+
+
+///
+Batch Insertion:
+
+Instead of sending 1000 separate requests to the API, batch the random float values into a single request.
+This reduces the number of HTTP connections and can significantly improve performance.
+Asynchronous Processing:
+
+Use asynchronous programming to handle the API requests. This allows your application to continue processing other tasks while waiting for the API response.
+Libraries like asyncio in Python can help manage multiple requests concurrently.
+Database Transaction:
+
+If your database supports transactions, wrap the insert operation in a transaction. This can improve performance by reducing the overhead of committing each individual insert.
+For example, in SQL, you can use BEGIN TRANSACTION and COMMIT to group the inserts.
+Minimize Overhead:
+
+Ensure that the API endpoint is optimized for handling bulk inserts. This may involve adjusting server settings or optimizing the database schema.
+Use efficient data structures to hold the random float values before sending them to the API.
+
+/// BATCH INSERTION
+import requests
+import random
+
+def generate_random_floats(num_values):
+    """Generate a list of random float values."""
+    return [random.uniform(400, 500) for _ in range(num_values)]
+
+def insert_random_floats(batch_size):
+    """Insert random float values in batches."""
+    random_floats = generate_random_floats(batch_size)
+    response = requests.post("http://localhost:5000/api/insert-random-floats", json=random_floats)
+    return response.json()
+
+# Insert 1000 random float values in one batch
+result = insert_random_floats(1000)
+print(result)
+
+
+/// 
+import random
+from flask import Flask, jsonify, request
+from flask_sqlalchemy import SQLAlchemy
+from flask_caching import Cache
+import asyncio
+import httpx
+
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///example.db'
+db = SQLAlchemy(app)
+cache = Cache(app, config={"CACHE_TYPE": "simple"})
+
+class ReplenishmentDb(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    value = db.Column(db.Float, nullable=False)
+
+# Create the database tables
+with app.app_context():
+    db.create_all()
+
+async def insert_random_values(values):
+    """Asynchronously insert random float values into the database."""
+    async with httpx.AsyncClient() as client:
+        response = await client.post("http://localhost:5000/api/insert-random-floats", json=values)
+        return response.json()
+
+@app.route('/api/insert-random-floats', methods=['POST'])
+def insert_random_floats():
+    """Insert random float values into the database."""
+    values = request.json
+    try:
+        with db.session.begin():  # Start a transaction
+            for value in values:
+                new_value = ReplenishmentDb(value=value)
+                db.session.add(new_value)
+        return jsonify({"success": True, "message": "Values inserted successfully!"}), 201
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+@app.route('/api/generate-and-insert', methods=['POST'])
+async def generate_and_insert():
+    """Generate random float values and insert them asynchronously."""
+    num_values = request.json.get("num_values", 1000)  # Default to 1000 values
+    random_values = [random.uniform(400.0, 500.0) for _ in range(num_values)]
+    
+    # Call the insert function asynchronously
+    result = await insert_random_values(random_values)
+    return jsonify(result)
+
+if __name__ == "__main__":
+    app.run(debug=True, port=5000)
+
+
+
+
+////
+from sqlalchemy import create_engine, Column, Integer, Float
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+
+# Define the base class for declarative models
+Base = declarative_base()
+
+class ReplenishmentDb(Base):
+    __tablename__ = 'replenishments'
+
+    id = Column(Integer, primary_key=True)
+    value = Column(Float, nullable=False)
+
+# Create an engine and a session
+engine = create_engine('sqlite:///example.db')  # Use your database URL
+Base.metadata.create_all(engine)  # Create the table
+Session = sessionmaker(bind=engine)
+
+
+///
+import random
+
+def insert_random_values(num_values):
+    session = Session()  # Create a new session
+    try:
+        # Generate random float values
+        random_values = [ReplenishmentDb(value=random.uniform(400.0, 500.0)) for _ in range(num_values)]
+        
+        # Use bulk_save_objects for efficient batch insertion
+        session.bulk_save_objects(random_values)
+        
+        # Commit the transaction
+        session.commit()
+        print(f"Inserted {num_values} random values successfully.")
+    except Exception as e:
+        session.rollback()  # Rollback in case of error
+        print(f"Error occurred: {e}")
+    finally:
+        session.close()  # Close the session
+
+# Insert 1000 random float values
+insert_random_values(1000)
+
+
+Model Definition: The ReplenishmentDb class defines the structure of the table in the database. Each instance of this class represents a row in the table.
+Session Management: A session is created to manage database transactions. You can think of a session as a workspace for your database operations.
+Generating Random Values: The insert_random_values function generates a list of ReplenishmentDb objects with random float values.
+Bulk Insertion: The bulk_save_objects method is used to insert multiple records in one go, which is more efficient than adding them one by one.
+Transaction Management: The commit method is called to save the changes to the database. If an error occurs, the transaction is rolled back to maintain data integrity.
+Session Closure: Finally, the session is closed to free up resources.
