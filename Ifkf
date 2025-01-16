@@ -1,0 +1,21 @@
+import { shallowMount } from '@vue/test-utils';
+import MyComponent from '@/components/MyComponent.vue';
+
+describe('MyComponent', () => {
+  it('catches error and logs it', async () => {
+    // Create a spy for console.log
+    const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
+
+    const wrapper = shallowMount(MyComponent);
+
+    // Trigger the fetchData method
+    await wrapper.vm.fetchData();
+
+    // Check if console.log was called with an empty string and the expected error
+    expect(consoleLogSpy).toHaveBeenCalledWith('', expect.any(Error));
+    expect(consoleLogSpy).toHaveBeenCalledWith('', expect.objectContaining({ message: 'Network Error' }));
+
+    // Restore the original console.log
+    consoleLogSpy.mockRestore();
+  });
+});
