@@ -1,0 +1,125 @@
+import { shallowMount } from '@vue/test-utils';
+import ProcessInformationScreen from '@/components/pages/ProcessInformationScreen/ProcessInformationScreen.vue';
+import { FetchAPI } from '@/utility/apiRequest';
+
+// Mock the FetchAPI class
+jest.mock('@/utility/apiRequest', () => {
+  return {
+    FetchAPI: jest.fn().mockImplementation(() => {
+      return {
+        get: jest.fn(),
+        put: jest.fn(),
+      };
+    }),
+  };
+});
+
+describe('ProcessInformationScreen', () => {
+  let wrapper;
+  let api;
+
+  beforeEach(() => {
+    api = new FetchAPI();
+    wrapper = shallowMount(ProcessInformationScreen);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks(); // Clear mocks after each test
+  });
+
+  it('fetches operations data successfully', async () => {
+    // Mock successful response for operations
+    api.get.mockResolvedValueOnce({
+      data: [{ 
+        non_defective_products: 10, 
+        planned_number_units: 5, 
+        process_id: 1, 
+        process_name: 'Process 1', 
+        product_number: 1234, 
+        facility_cycle_time: 2.5 
+      }],
+    });
+
+    await wrapper.vm.setOperationsData();
+
+    // Check that the data was set correctly
+    expect(wrapper.vm.nonDefectiveProducts).toBe(10);
+    expect(wrapper.vm.incrementedUnits).toBe(5);
+  });
+
+  it('handles error when fetching operations data', async () => {
+    // Mock error response for operations
+    api.get.mockRejectedValueOnce(new Error('API fetch error'));
+
+    await wrapper.vm.setOperationsData();
+
+    // Check if the error is logged
+    expect(console.log).toHaveBeenCalledWith(expect.any(Error));
+  });
+
+  it('fetches replenishment data successfully', async () => {
+    // Mock successful response for replenishment
+    api.get.mockResolvedValueOnce({
+      data: [{ notice: 'Replenishment needed' }],
+    });
+
+    await wrapper.vm.setReplenishmentData();
+
+    // Check that the data was set correctly
+    expect(wrapper.vm.replenishmentData).toEqual([{ notice: 'Replenishment needed' }]);
+  });
+
+  it('handles error when fetching replenishment data', async () => {
+    // Mock error response for replenishment
+    api.get.mockRejectedValueOnce(new Error('API fetch error'));
+
+    await wrapper.vm.setReplenishmentData();
+
+    // Check if the error is logged
+    expect(console.log).toHaveBeenCalledWith(expect.any(Error));
+  });
+
+  it('fetches abnormalities data successfully', async () => {
+    // Mock successful response for abnormalities
+    api.get.mockResolvedValueOnce({
+      data: [{ abnormality: 'Abnormality detected' }],
+    });
+
+    await wrapper.vm.setAbnormalitiesData();
+
+    // Check that the data was set correctly
+    expect(wrapper.vm.abnormalitiesData).toEqual([{ abnormality: 'Abnormality detected' }]);
+  });
+
+  it('handles error when fetching abnormalities data', async () => {
+    // Mock error response for abnormalities
+    api.get.mockRejectedValueOnce(new Error('API fetch error'));
+
+    await wrapper.vm.setAbnormalitiesData();
+
+    // Check if the error is logged
+    expect(console.log).toHaveBeenCalledWith(expect.any(Error));
+  });
+
+  it('fetches reference cycle time successfully', async () => {
+    // Mock successful response for reference cycle time
+    api.get.mockResolvedValueOnce({
+      data: [{ reference_cycle_time: 2 }],
+    });
+
+    await wrapper.vm.setReferenceCT();
+
+    // Check that the referenceCT was set correctly
+    expect(wrapper.vm.referenceCT).toBe(2000); // 2 seconds converted to milliseconds
+  });
+
+  it('handles error when fetching reference cycle time', async () => {
+    // Mock error response for reference cycle time
+    api.get.mockRejectedValueOnce(new Error('API fetch error'));
+
+    await wrapper.vm.setReferenceCT();
+
+    // Check if the error is logged
+    expect(console.log).toHaveBeenCalledWith(expect.any(Error));
+  });
+});
