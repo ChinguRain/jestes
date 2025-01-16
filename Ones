@@ -1,0 +1,57 @@
+import { shallowMount } from '@vue/test-utils';
+import ProcessInformationScreen from '@/components/pages/ProcessInformationScreen/ProcessInformationScreen.vue';
+import { FetchAPI } from '@/utility/apiRequest';
+
+// Mock the FetchAPI class
+jest.mock('@/utility/apiRequest', () => {
+  return {
+    FetchAPI: jest.fn().mockImplementation(() => {
+      return {
+        get: jest.fn().mockImplementation(() => {
+          // Simulate an error for the get method
+          return Promise.reject(new Error('API fetch error'));
+        }),
+        put: jest.fn().mockImplementation(() => {
+          // Simulate an error for the put method
+          return Promise.reject(new Error('API update error'));
+        }),
+      };
+    }),
+  };
+});
+
+describe('ProcessInformationScreen', () => {
+  let wrapper;
+
+  beforeEach(() => {
+    wrapper = shallowMount(ProcessInformationScreen);
+  });
+
+  it('handles error when fetching operations data', async () => {
+    await wrapper.vm.setOperationsData();
+
+    // Check if the error is logged (you can also check for other side effects)
+    expect(console.log).toHaveBeenCalledWith(expect.any(Error));
+  });
+
+  it('handles error when fetching replenishment data', async () => {
+    await wrapper.vm.setReplenishmentData();
+
+    // Check if the error is logged
+    expect(console.log).toHaveBeenCalledWith(expect.any(Error));
+  });
+
+  it('handles error when fetching abnormalities data', async () => {
+    await wrapper.vm.setAbnormalitiesData();
+
+    // Check if the error is logged
+    expect(console.log).toHaveBeenCalledWith(expect.any(Error));
+  });
+
+  it('handles error when fetching reference cycle time', async () => {
+    await wrapper.vm.setReferenceCT();
+
+    // Check if the error is logged
+    expect(console.log).toHaveBeenCalledWith(expect.any(Error));
+  });
+});
