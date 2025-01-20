@@ -1,0 +1,53 @@
+// MyComponent.spec.js
+import { shallowMount } from '@vue/test-utils';
+import MyComponent from '@/components/MyComponent.vue';
+
+describe('MyComponent.vue', () => {
+  let wrapper;
+
+  beforeEach(() => {
+    wrapper = shallowMount(MyComponent);
+  });
+
+  it('sets ambient temperature data correctly', async () => {
+    // Mock the fetchAmbientTemperature method
+    wrapper.vm.fetchAmbientTemperature = jest.fn().mockResolvedValue([
+      { ambient_temperature: 22 },
+      { ambient_temperature: 25 },
+      { ambient_temperature: 20 },
+    ]);
+
+    // Call the method
+    await wrapper.vm.setAmbientTemperatureData();
+
+    // Assert the ambientTemperatureData is set correctly
+    expect(wrapper.vm.ambientTemperatureData).toEqual([22, 25, 20]);
+  });
+});
+
+
+sldkdk
+
+// MyComponent.spec.js
+import { shallowMount } from '@vue/test-utils';
+import MyComponent from '@/components/MyComponent.vue';
+
+describe('MyComponent.vue', () => {
+  let wrapper;
+
+  beforeEach(() => {
+    wrapper = shallowMount(MyComponent);
+  });
+
+  it('sets ambient temperature data correctly', async () => {
+    // Mock the fetchAmbientTemperature method
+    wrapper.vm.fetchAmbientTemperature = jest.fn().mockResolvedValue([
+      { ambient_temperature: 22 },
+      { ambient_temperature: 25 },
+      { ambient_temperature: 20 },
+    ]);
+
+    // Spy on the push method of ambientTemperatureData
+    const pushSpy = jest.spyOn(wrapper.vm.ambientTemperatureData, 'push');
+
+    // Call the ⬤
